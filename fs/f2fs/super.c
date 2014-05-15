@@ -583,7 +583,7 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(root->d_sb);
 
-	if (!(root->d_sb->s_flags & MS_RDONLY) && test_opt(sbi, BG_GC))
+	if (!f2fs_readonly(sbi->sb) && test_opt(sbi, BG_GC))
 		seq_printf(seq, ",background_gc=%s", "on");
 	else
 		seq_printf(seq, ",background_gc=%s", "off");
@@ -607,6 +607,12 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	else
 		seq_puts(seq, ",noacl");
 #endif
+	if (test_opt(sbi, ERRORS_PANIC))
+		seq_puts(seq, ",errors=panic");
+	else if (test_opt(sbi, ERRORS_RECOVER))
+		seq_puts(seq, ",errors=recover");
+	else
+		seq_puts(seq, ",errors=continue");
 	if (test_opt(sbi, DISABLE_EXT_IDENTIFY))
 		seq_puts(seq, ",disable_ext_identify");
 
@@ -621,7 +627,7 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 
 	if (test_opt(sbi, INLINE_DATA))
 		seq_puts(seq, ",inline_data");
-	if (test_opt(sbi, FLUSH_MERGE))
+	if (!f2fs_readonly(sbi->sb) && test_opt(sbi, FLUSH_MERGE))
 		seq_puts(seq, ",flush_merge");
 	seq_printf(seq, ",active_logs=%u", sbi->active_logs);
 
@@ -951,6 +957,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	const char *descr = "";
 	int i;
 
+	f2fs_msg(sb, KERN_INFO, "mounting..");
 	/* allocate memory for f2fs-specific super block info */
 	sbi = kzalloc(sizeof(struct f2fs_sb_info), GFP_KERNEL);
 	if (!sbi)
@@ -1028,6 +1035,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 		goto free_sb_buf;
 	}
 
+get_cp:
 	err = get_valid_checkpoint(sbi);
 	if (err) {
 		f2fs_msg(sb, KERN_ERR, "Failed to get valid F2FS checkpoint");
@@ -1051,6 +1059,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	sbi->last_valid_block_count = sbi->total_valid_block_count;
 	sbi->alloc_valid_block_count = 0;
 	INIT_LIST_HEAD(&sbi->dir_inode_list);
+	atomic_set(&sbi->dirty_dir_inodes, 0);
 	spin_lock_init(&sbi->dir_inode_lock);
 
 	init_orphan_info(sbi);
@@ -1176,6 +1185,7 @@ free_sb_buf:
 	brelse(raw_super_buf);
 free_sbi:
 	kfree(sbi);
+	f2fs_msg(sb, KERN_ERR, "mount failed");
 	return err;
 }
 
