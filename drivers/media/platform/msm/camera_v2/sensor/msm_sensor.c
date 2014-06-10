@@ -1289,8 +1289,9 @@ static long msm_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_SENSOR_CFG:
 		return s_ctrl->func_tbl->sensor_config(s_ctrl, argp);
 	case VIDIOC_MSM_SENSOR_RELEASE:
-	case MSM_SD_SHUTDOWN:
 		msm_sensor_stop_stream(s_ctrl);
+		return 0;
+	case MSM_SD_SHUTDOWN:
 		return 0;
 	default:
 		return -ENOIOCTLCMD;
@@ -1327,7 +1328,6 @@ static int msm_sensor_config_mt9m114b(struct msm_sensor_ctrl_t *s_ctrl,
 						&data, MSM_CAMERA_I2C_WORD_DATA);
 				if (rc < 0) {
 					pr_err("%s:%d failed\n", __func__, __LINE__);
-					rc = -EFAULT;
 					break;
 				}
 
@@ -1355,7 +1355,6 @@ static int msm_sensor_config_mt9m114b(struct msm_sensor_ctrl_t *s_ctrl,
 					&data, MSM_CAMERA_I2C_WORD_DATA);
 			if (rc < 0) {
 				pr_err("%s:%d failed\n", __func__, __LINE__);
-				rc = -EFAULT;
 				break;
 			}
 
@@ -1370,7 +1369,6 @@ static int msm_sensor_config_mt9m114b(struct msm_sensor_ctrl_t *s_ctrl,
 					data, MSM_CAMERA_I2C_WORD_DATA);
 			if (rc < 0) {
 				pr_err("%s:%d failed\n", __func__, __LINE__);
-				rc = -EFAULT;
 				break;
 			}
 
@@ -1386,7 +1384,6 @@ static int msm_sensor_config_mt9m114b(struct msm_sensor_ctrl_t *s_ctrl,
 					conf_array.reg_setting[i].reg_data, conf_array.data_type);
 			if (rc < 0) {
 				pr_err("%s:%d failed\n", __func__, __LINE__);
-				rc = -EFAULT;
 				break;
 			}
 		}
